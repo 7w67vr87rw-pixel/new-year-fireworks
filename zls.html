@@ -1,0 +1,530 @@
+index.html
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 标题更新 -->
+    <title>张老师，新年快乐🎆</title>
+    
+    <!-- 微信/社交媒体分享优化 (Open Graph Tags) - 标题和描述更新 -->
+    <meta property="og:title" content="张老师，新年快乐🎆">
+    <meta property="og:description" content="点击屏幕，为你献上独一无二的沉浸式新春烟花秀！">
+    <meta property="og:image" content="https://placehold.co/1200x630/cc3333/ffffff?text=Happy+New+Year+%E6%96%B0%E5%B9%B4%E5%BF%AB%E4%B9%90">
+    <meta property="og:url" content=""> 
+    <meta property="og:type" content="website">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            /* 更加深邃且带有节日氛围的红黑渐变背景 */
+            background: radial-gradient(circle at 50% 100%, #1a0505 0%, #000000 100%);
+            touch-action: none;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* --- UI 布局：右上角悬浮 --- */
+        #control-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .fab-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .fab-btn:active { transform: scale(0.9); }
+
+        /* 激活状态：金色发光 */
+        .fab-btn.active {
+            background: rgba(255, 215, 0, 0.2);
+            border-color: #ffd700;
+            color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+            transform: scale(1.1);
+        }
+
+        /* 标签提示 */
+        .fab-btn::after {
+            content: attr(data-label);
+            position: absolute;
+            right: 60px;
+            background: rgba(0,0,0,0.6);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            color: #ddd;
+        }
+        .fab-btn:hover::after { opacity: 1; }
+
+        /* 启动遮罩 */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.92);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.6s;
+            pointer-events: auto;
+            
+            /* ====== 新增：红灯笼背景 ====== */
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(200, 30, 30, 0.2) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(200, 30, 30, 0.2) 0%, transparent 40%),
+                radial-gradient(circle at 50% 10%, rgba(200, 30, 30, 0.15) 0%, transparent 30%),
+                radial-gradient(circle at 30% 70%, rgba(200, 30, 30, 0.25) 0%, transparent 50%);
+            background-size: 200px 200px, 250px 250px, 180px 180px, 220px 220px;
+            animation: lantern-float 15s infinite ease-in-out alternate;
+        }
+
+        @Keyframes lantern-float {
+            0% { background-position: 10% 20%, 90% 80%, 50% 10%, 30% 70%; }
+            100% { background-position: 15% 25%, 85% 75%, 55% 15%, 35% 65%; }
+        }
+        /* ============================ */
+
+        .title-text {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(to right, #ff4d4d, #f9cb28);
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 1rem;
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5); /* 增加文字辨识度 */
+        }
+        
+        .tap-hint { 
+            animation: pulse 1.5s infinite; 
+            color: #fed7aa; /* 提示文字改为金色系 */
+            font-size: 1rem;
+            margin-top: 10px;
+            max-width: 80%;
+            text-align: center;
+        }
+        @Keyframes pulse { 50% { opacity: 0.5; } }
+
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- 启动遮罩 (内容更新) -->
+    <div id="overlay">
+        <!-- 定制化的新年祝福 -->
+        <div class="title-text">张老师，新年快乐🎆</div>
+        <!-- 定制化的提示语 -->
+        <div class="tap-hint">点击屏幕，为你献上独一无二的沉浸式新春烟花秀！</div>
+    </div>
+
+    <!-- 控制面板 (右上角) -->
+    <div id="control-panel">
+        <button id="btn-music" class="fab-btn" data-label="背景音乐">
+            🎵
+        </button>
+        <button id="btn-auto" class="fab-btn" data-label="自动连发">
+            🚀
+        </button>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. 虚拟民乐团 (Audio System)
+        // ==========================================
+        const AudioSys = {
+            ctx: null, masterGain: null, bgmInterval: null, drumInterval: null, isPlaying: false,
+
+            init() {
+                if (this.ctx) return;
+                const AC = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AC();
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.value = 0.5;
+                this.masterGain.connect(this.ctx.destination);
+            },
+            resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+            toggleBGM() {
+                if (this.isPlaying) { this.stopBGM(); return false; } 
+                else { this.startBGM(); return true; }
+            },
+            startBGM() {
+                this.isPlaying = true;
+                this.bgmInterval = setInterval(() => this.playNote(), 150);
+                this.drumInterval = setInterval(() => this.playDrum(), 400);
+            },
+            stopBGM() {
+                this.isPlaying = false;
+                clearInterval(this.bgmInterval);
+                clearInterval(this.drumInterval);
+            },
+            playNote() {
+                if (Math.random() < 0.20) return; 
+                const t = this.ctx.currentTime;
+                const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 659.25, 783.99]; 
+                const freq = scale[Math.floor(Math.random() * scale.length)];
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth'; 
+                osc.frequency.setValueAtTime(freq, t);
+                
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(0.20, t + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(t);
+                osc.stop(t + 0.8);
+            },
+            playDrum() {
+                if (Math.random() < 0.4) return;
+                const t = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(80, t); 
+                osc.frequency.exponentialRampToValueAtTime(30, t + 0.1);
+                
+                gain.gain.setValueAtTime(0.12, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(t);
+                osc.stop(t + 0.4);
+            },
+            playExplosion(isSecondary) {
+                if (!this.ctx) return;
+                const t = this.ctx.currentTime;
+                const bufferSize = this.ctx.sampleRate * (isSecondary ? 0.5 : 1.0);
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = isSecondary ? 1000 : 400;
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(isSecondary ? 0.05 : 0.25, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + (isSecondary ? 0.3 : 1.0));
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.masterGain);
+                noise.start(t);
+            },
+            playLaunch() { /* 静默发射 */ }
+        };
+
+        // ==========================================
+        // 2. Visual Engine
+        // ==========================================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        
+        const CONFIG = { gravity: 0.10, drag: 0.97 }; 
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor(x, y, hue, type) {
+                this.x = x; this.y = y; this.hue = hue;
+                this.type = type; 
+                this.vx = 0; this.vy = 0;
+                this.alpha = 1;
+                this.friction = CONFIG.drag;
+                this.gravity = CONFIG.gravity;
+                this.decay = Math.random() * 0.015 + 0.01;
+                this.size = Math.random() * 2 + 1;
+
+                if (type === 'seed') {
+                    this.gravity = 0.12;
+                    this.decay = 0.005;
+                    this.size = 2.5;
+                    this.hasExploded = false;
+                }
+            }
+            update() {
+                this.vx *= this.friction;
+                this.vy *= this.friction;
+                this.vy += this.gravity;
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= this.decay;
+
+                if (this.type === 'seed' && !this.hasExploded) {
+                    if (this.vy > 0.5 && Math.random() < 0.06) {
+                        this.hasExploded = true;
+                        this.alpha = 0; 
+                        return this.explode();
+                    }
+                }
+                return null;
+            }
+            explode() {
+                AudioSys.playExplosion(true);
+                const subs = [];
+                const count = 10;
+                const subHue = this.hue + Math.random() * 40 - 20;
+                for(let i=0; i<count; i++){
+                    const p = new Particle(this.x, this.y, subHue, 'normal');
+                    const a = Math.random() * Math.PI * 2;
+                    const s = Math.random() * 1.5;
+                    p.vx = Math.cos(a) * s + this.vx*0.5;
+                    p.vy = Math.sin(a) * s + this.vy*0.5;
+                    p.decay = 0.03;
+                    p.size = 1;
+                    subs.push(p);
+                }
+                return subs;
+            }
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.fillStyle = `hsl(${this.hue}, 100%, 60%)`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        let particles = [];
+        let rockets = [];
+
+        function createExplosion(x, y, hue, isHighAltitude) {
+            AudioSys.playExplosion(false);
+            const shapes = ['circle', 'heart', 'star', 'seed'];
+            const shape = shapes[Math.floor(Math.random() * shapes.length)];
+            const count = 80;
+
+            for (let i = 0; i < count; i++) {
+                let vx, vy;
+                let type = 'normal';
+                
+                if (shape === 'heart') {
+                    const a = (Math.PI * 2 * i) / count;
+                    const hx = 16 * Math.pow(Math.sin(a), 3);
+                    const hy = -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a));
+                    vx = hx * 0.12; vy = hy * 0.12;
+                    if(Math.random() < 0.5) hue = 340;
+                } else if (shape === 'star') {
+                    const a = (Math.PI * 2 * i) / count;
+                    const r = 1 + 0.5 * Math.cos(5 * a);
+                    const s = Math.random() * 4 + 1; 
+                    vx = Math.cos(a)*s; vy = Math.sin(a)*s;
+                    hue = 45;
+                } else {
+                    const a = Math.random() * Math.PI * 2;
+                    const s = Math.random() * 5 + 1; 
+                    vx = Math.cos(a)*s; vy = Math.sin(a)*s;
+                    
+                    if (isHighAltitude) {
+                        if (shape === 'seed' && Math.random() < 0.25) {
+                            type = 'seed';
+                        }
+                        else if (Math.random() < 0.05) {
+                            type = 'seed';
+                        }
+                    }
+                }
+
+                const p = new Particle(x, y, hue, type);
+                p.vx = vx; p.vy = vy;
+                particles.push(p);
+            }
+        }
+
+        class Rocket {
+            constructor(sx, sy, tx, ty) {
+                this.x = sx; this.y = sy;
+                this.hue = Math.floor(Math.random() * 360);
+                
+                let safeTy = Math.min(ty, height - 150);
+                
+                this.isHighAltitude = (safeTy < height * 0.4); 
+
+                const h = sy - safeTy;
+                this.vy = -Math.sqrt(2 * CONFIG.gravity * h);
+                const t = Math.abs(this.vy / CONFIG.gravity);
+                this.vx = (tx - sx) / t;
+                this.trail = [];
+                // 发射音效已移除
+            }
+            update() {
+                this.trail.push({x:this.x, y:this.y});
+                if(this.trail.length > 4) this.trail.shift();
+                this.vy += CONFIG.gravity;
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+            isApex() { return this.vy >= 0; }
+            draw() {
+                ctx.globalAlpha = 1;
+                ctx.strokeStyle = `hsl(${this.hue}, 100%, 70%)`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                if(this.trail.length) {
+                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                    for(let p of this.trail) ctx.lineTo(p.x, p.y);
+                } else ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x, this.y);
+                ctx.stroke();
+            }
+        }
+
+        function loop() {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, width, height);
+            ctx.globalCompositeOperation = 'lighter';
+
+            for (let i = rockets.length - 1; i >= 0; i--) {
+                rockets[i].update();
+                rockets[i].draw();
+                if (rockets[i].isApex()) {
+                    createExplosion(rockets[i].x, rockets[i].y, rockets[i].hue, rockets[i].isHighAltitude);
+                    rockets.splice(i, 1);
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                const newP = p.update();
+                p.draw();
+                if(newP) particles.push(...newP);
+                if(p.alpha <= 0) particles.splice(i, 1);
+            }
+            requestAnimationFrame(loop);
+        }
+        loop();
+
+        // ==========================================
+        // 3. UI Interaction Logic
+        // ==========================================
+        const overlay = document.getElementById('overlay');
+        const btnMusic = document.getElementById('btn-music');
+        const btnAuto = document.getElementById('btn-auto');
+        
+        let started = false;
+        let autoInterval = null;
+
+        function launch(x, y) {
+            rockets.push(new Rocket(x, height, x, y));
+        }
+
+        function handleInteraction(e) {
+            if (e.target.closest('.fab-btn')) return;
+
+            if (!started) {
+                AudioSys.init();
+                AudioSys.resume();
+                overlay.style.opacity = 0;
+                setTimeout(() => overlay.style.display = 'none', 600);
+                started = true;
+                
+                const playing = AudioSys.toggleBGM();
+                if(playing) btnMusic.classList.add('active');
+            }
+
+            e.preventDefault();
+            let tx, ty;
+            if (e.type.startsWith('touch')) {
+                tx = e.touches[0].clientX;
+                ty = e.touches[0].clientY;
+            } else {
+                tx = e.clientX;
+                ty = e.clientY;
+            }
+            launch(tx, ty);
+        }
+
+        document.addEventListener('mousedown', handleInteraction);
+        document.addEventListener('touchstart', handleInteraction, {passive: false});
+
+        // --- Button Logic ---
+        btnMusic.addEventListener('click', (e) => {
+            e.stopPropagation();
+            AudioSys.init();
+            AudioSys.resume();
+            const playing = AudioSys.toggleBGM();
+            if (playing) btnMusic.classList.add('active');
+            else btnMusic.classList.remove('active');
+        });
+
+        btnAuto.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (autoInterval) {
+                clearInterval(autoInterval);
+                autoInterval = null;
+                btnAuto.classList.remove('active');
+            } else {
+                launch(width/2, height/3);
+                autoInterval = setInterval(() => {
+                    const rx = width * 0.1 + Math.random() * width * 0.8;
+                    const ry = height * 0.1 + Math.random() * height * 0.4;
+                    launch(rx, ry);
+                }, 750);
+                btnAuto.classList.add('active');
+            }
+        });
+
+    </script>
+</body>
+</html>
